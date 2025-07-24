@@ -25,9 +25,10 @@ class ScalpingInputs(BaseModel):
     price_close_history: List[float]
     price_high_history: List[float] = []
     price_low_history: List[float] = []
-    volume: int # ADDED: The most recent volume bar
+    volume: int 
     volume_history: List[float]
     vwap_value: float
+    strike_price: Optional[float] = None 
 
     # Enhanced Market Microstructure
     bid_price: float

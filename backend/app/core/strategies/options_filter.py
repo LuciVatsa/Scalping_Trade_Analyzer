@@ -2,6 +2,7 @@ from typing import Tuple, List
 from .base import ScalpingStrategy
 from app.core.models.signals import ScalpingInputs
 import math
+import numpy as np
 
 class EnhancedOptionsFilterStrategy(ScalpingStrategy):
     """
@@ -49,14 +50,20 @@ class EnhancedOptionsFilterStrategy(ScalpingStrategy):
                 factors.append(f"❌ Excessive theta decay ({daily_theta_pct:.1%}/day)")
 
         # 5. Implied Volatility Analysis
-        if inputs.implied_volatility and inputs.historical_volatility:
+        if inputs.implied_volatility and len(inputs.price_close_history) >= 20:
+            # Calculate 20-day historical volatility (HV)
+            daily_returns = np.log(np.array(inputs.price_close_history[-20:]) / np.array(inputs.price_close_history[-21:-1]))
+            hv = np.std(daily_returns) * np.sqrt(252) # Annualized
+            
             iv = inputs.implied_volatility
-            hv = inputs.historical_volatility
-            if hv > 0:
-                iv_rank = (iv - hv) / hv
-                if iv_rank > 0.5:
-                    score -= 1.0
-                    factors.append(f"⚠️ High IV rank ({iv_rank:.1%} - expensive premium)")
+            
+            # Compare IV to HV
+            if iv > hv * 1.5: # If IV is 50% higher than recent volatility
+                score -= 1.0
+                factors.append(f"⚠️ High IV ({iv:.1%}) vs HV ({hv:.1%}) - Expensive premium, risk of IV crush")
+            elif iv < hv * 0.8: # If IV is lower than recent volatility
+                score += 0.5
+                factors.append(f"✅ Low IV ({iv:.1%}) vs HV ({hv:.1%}) - Cheaper premium")
 
         # 6. Volume and Open Interest Quality
         if inputs.option_volume is not None and inputs.open_interest is not None:

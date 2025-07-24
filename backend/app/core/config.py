@@ -50,15 +50,19 @@ class TradingConfig:
     base_weights: Dict[str, float] = field(default_factory=lambda: {
         'momentum': 2.0,          # Strongest driver for short-term direction
         'volume': 1.8,            # High importance for confirming moves
-        'microstructure': 1.6,    # Captures immediate order flow pressure
+        'microstructure': 0.0,    # Captures immediate order flow pressure
         'levels': 1.7,            # Key support/resistance is critical
         'vwap': 1.5,              # A standard institutional benchmark
         'bollinger_bands': 1.3,   # Good for volatility and breakout patterns
-        'gamma_levels': 1.4,      # Important for identifying market turning points
+        'gamma_levels': 0.0,      # Important for identifying market turning points
         'market_structure': 1.2,  # Provides broader market context
         'time_session': 1.0,      # Context for volatility and liquidity
         'dte_risk': 1.1,          # Manages risk associated with time decay
-        'options_filter': 1.9     # A critical filter to avoid bad trades
+        'options_filter': 1.9,     # A critical filter to avoid bad trades
+
+        # --- Using the new proxy strategies ---
+        'open_interest': 1.4,      # Using OI instead of Gamma for now
+        'candle_analysis': 1.6    # Using Candle Analysis instead of Microstructure
     })
 
     # --- Dynamic Adjustments ---
@@ -71,8 +75,8 @@ class TradingConfig:
     # --- Signal Thresholds ---
     # Defines the total score needed to trigger a specific signal.
     base_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        'strong_bull': 7.0,
-        'bull': 3.0,
-        'bear': -3.0,
-        'strong_bear': -7.0
+        'strong_bull': 5.0,
+        'bull': 2.0,
+        'bear': -2.0,
+        'strong_bear': -5.0
     })

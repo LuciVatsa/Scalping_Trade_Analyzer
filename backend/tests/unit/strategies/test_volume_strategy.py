@@ -12,20 +12,18 @@ def test_low_volume_scenario():
     """
     Tests that a low volume scenario generates a negative score and the correct factor.
     """
-    # 1. ARRANGE: Create a realistic but controlled input
-    # In this case, the average volume is 10,000, but the current volume is only 4,000
-    # This creates a spike factor of 0.4, which should trigger the low volume logic
-    volume_history = [10000] * 20 
+    # 1. ARRANGE
+    volume_history = [10000] * 20
     volume_history.append(4000) # Current volume is low
-
     price_history = [150.0] * 21 # Stable price history
 
-    # Create a valid ScalpingInputs object with realistic data
+    # Create a valid ScalpingInputs object with all required fields
     inputs = ScalpingInputs(
         current_price=150.0,
         price_close_history=price_history,
         price_high_history=price_history,
         price_low_history=price_history,
+        volume=4000, # ADDED: The most recent volume bar
         volume_history=volume_history,
         vwap_value=150.0,
         bid_price=149.99,
@@ -40,13 +38,16 @@ def test_low_volume_scenario():
         option_price=3.15,
         option_delta=0.5,
         option_gamma=0.05,
-        option_theta=-0.08
+        option_theta=-0.08,
+        strike_price=150.0, # ADDED: Required for some strategies
+        option_volume=100,
+        open_interest=500
     )
 
-    # 2. ACT: Run the code you want to test
+    # 2. ACT
     strategy = VolumeStrategy(config, constants)
     score, factors = strategy.calculate_score(inputs)
 
-    # 3. ASSERT: Check if the outcome is what you expect
-    assert score < 0 # The score should be negative for low volume
+    # 3. ASSERT
+    assert score < 0
     assert "📉 Low volume (0.4x average) - weak conviction" in factors

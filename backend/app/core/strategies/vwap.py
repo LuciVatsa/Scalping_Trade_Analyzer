@@ -240,7 +240,7 @@ class VWAPStrategy(ScalpingStrategy):
             factors.append("📊 Price within VWAP standard deviation bands")
         
         # Band compression analysis
-        band_width = (vwap_bands['upper_1'] - vwap_bands['lower_1']) / vwap_bands['std_dev']
+        band_width = (vwap_bands['upper_1'] - vwap_bands['lower_1']) / (vwap_bands['std_dev'] + 1e-9)
         if band_width < 0.5:
             score += 1.0
             factors.append("⚡ VWAP band compression - potential breakout")

@@ -22,6 +22,8 @@ from app.core.strategies.options_filter import EnhancedOptionsFilterStrategy
 from app.core.strategies.dte_risk import DTEStrategy
 from app.core.strategies.time_session import TimeSessionStrategy
 from app.core.strategies.levels import LevelStrategy
+from app.core.strategies.candle_analysis import CandleAnalysisStrategy
+from app.core.strategies.open_interest import OpenInterestStrategy
 
 class EnhancedScalpingEngine:
     """Advanced scalping engine with adaptive strategies and market regime detection."""
@@ -61,7 +63,9 @@ class EnhancedScalpingEngine:
             'dte_risk': DTEStrategy(self.config, self.constants),
             'time_session': TimeSessionStrategy(self.config, self.constants),
             'bollinger_bands': BollingerBandsStrategy(self.config, self.constants),
-            'levels': LevelStrategy(self.config, self.constants)
+            'levels': LevelStrategy(self.config, self.constants),
+            'open_interest': OpenInterestStrategy(self.config, self.constants),
+            'candle_analysis': CandleAnalysisStrategy(self.config, self.constants)
         }
 
     def analyze_signal(self, inputs: Dict[str, Any]) -> Optional[SignalResult]:
