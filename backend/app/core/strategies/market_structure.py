@@ -65,8 +65,11 @@ class MarketStructureAnalyzer:
         prev_high = max(highs[:mid_point])
         prev_low = min(lows[:mid_point])
         
-        # Price momentum
-        price_change = (closes[-1] - closes[0]) / closes[0] * 100
+        # Price momentum with division by zero protection
+        if closes[0] == 0:
+            price_change = 0.0
+        else:
+            price_change = (closes[-1] - closes[0]) / closes[0] * 100
         
         # Determine structure
         structure = MarketStructure.RANGE_BOUND
@@ -96,11 +99,17 @@ class MarketStructureAnalyzer:
                 structure = MarketStructure.RANGE_BOUND  # Could add BEARISH_BIAS if enum exists
                 confidence = 0.6
         
+        # Range expansion with division by zero protection
+        if prev_high != prev_low:
+            range_expansion = (recent_high - recent_low) / (prev_high - prev_low)
+        else:
+            range_expansion = 1.0
+        
         return {
             'structure': structure,
             'confidence': confidence,
             'price_change_pct': price_change,
-            'range_expansion': (recent_high - recent_low) / (prev_high - prev_low) if prev_high != prev_low else 1.0
+            'range_expansion': range_expansion
         }
     
     def _calculate_trend_strength(self, closes: List[float]) -> Dict:
@@ -117,9 +126,12 @@ class MarketStructureAnalyzer:
         bullish_alignment = short_ma > medium_ma > long_ma
         bearish_alignment = short_ma < medium_ma < long_ma
         
-        # Price vs MA position
+        # Price vs MA position with division by zero protection
         current_price = closes[-1]
-        ma_position = (current_price - long_ma) / long_ma * 100
+        if long_ma == 0:
+            ma_position = 0.0
+        else:
+            ma_position = (current_price - long_ma) / long_ma * 100
         
         # Consecutive higher/lower closes
         consecutive_direction = 0
@@ -164,12 +176,22 @@ class MarketStructureAnalyzer:
         if len(closes) < 20:
             return {'regime': 'normal', 'percentile': 0.5}
         
-        # Calculate recent volatility
-        returns = [abs((closes[i] - closes[i-1]) / closes[i-1]) for i in range(1, len(closes))]
+        # Calculate recent volatility with division by zero protection
+        returns = []
+        for i in range(1, len(closes)):
+            if closes[i-1] == 0:
+                returns.append(0.0)
+            else:
+                returns.append(abs((closes[i] - closes[i-1]) / closes[i-1]))
+        
         recent_vol = np.mean(returns[-10:])
         historical_vol = np.mean(returns)
         
-        vol_ratio = recent_vol / historical_vol if historical_vol > 0 else 1.0
+        # Calculate volatility ratio with division by zero protection
+        if historical_vol == 0:
+            vol_ratio = 1.0
+        else:
+            vol_ratio = recent_vol / historical_vol
         
         if vol_ratio > 1.5:
             regime = 'high_volatility'
@@ -178,8 +200,11 @@ class MarketStructureAnalyzer:
         else:
             regime = 'normal'
         
-        # Calculate percentile rank
-        vol_percentile = sum(1 for vol in returns if vol <= recent_vol) / len(returns)
+        # Calculate percentile rank with protection for empty returns
+        if len(returns) == 0:
+            vol_percentile = 0.5
+        else:
+            vol_percentile = sum(1 for vol in returns if vol <= recent_vol) / len(returns)
         
         return {
             'regime': regime,
@@ -197,19 +222,42 @@ class MarketStructureAnalyzer:
         avg_volume = np.mean(volumes)
         recent_volume = np.mean(volumes[-5:])
         
-        # Volume trend
-        volume_trend = 'increasing' if recent_volume > avg_volume * 1.2 else \
-                      'decreasing' if recent_volume < avg_volume * 0.8 else 'stable'
+        # Volume trend with division by zero protection
+        if avg_volume == 0:
+            volume_trend = 'stable'
+            volume_ratio = 1.0
+        else:
+            volume_ratio = recent_volume / avg_volume
+            volume_trend = 'increasing' if recent_volume > avg_volume * 1.2 else \
+                          'decreasing' if recent_volume < avg_volume * 0.8 else 'stable'
         
-        # Price-volume relationship
-        price_changes = [(closes[i] - closes[i-1]) / closes[i-1] for i in range(1, min(len(closes), 10))]
-        volume_changes = [(volumes[i] - volumes[i-1]) / volumes[i-1] for i in range(1, min(len(volumes), 10))]
+        # Price-volume relationship with division by zero protection
+        price_changes = []
+        volume_changes = []
         
-        correlation = np.corrcoef(price_changes, volume_changes)[0, 1] if len(price_changes) > 1 else 0
+        for i in range(1, min(len(closes), 10)):
+            if closes[i-1] != 0:
+                price_changes.append((closes[i] - closes[i-1]) / closes[i-1])
+            else:
+                price_changes.append(0.0)
+                
+            if volumes[i-1] != 0:
+                volume_changes.append((volumes[i] - volumes[i-1]) / volumes[i-1])
+            else:
+                volume_changes.append(0.0)
+        
+        # Calculate correlation with protection for insufficient data
+        if len(price_changes) > 1 and np.std(price_changes) > 0 and np.std(volume_changes) > 0:
+            correlation = np.corrcoef(price_changes, volume_changes)[0, 1]
+            # Handle NaN correlation
+            if np.isnan(correlation):
+                correlation = 0.0
+        else:
+            correlation = 0.0
         
         return {
             'trend': volume_trend,
-            'ratio': recent_volume / avg_volume,
+            'ratio': volume_ratio,
             'price_volume_correlation': correlation,
             'confirmation': abs(correlation) > 0.3  # Volume confirms price movement
         }
@@ -269,13 +317,20 @@ class MarketStructureAnalyzer:
         recent_range = max(highs[-10:]) - min(lows[-10:])
         historical_range = max(highs[-20:]) - min(lows[-20:])
         
-        # Price compression ratio
-        compression_ratio = recent_range / historical_range if historical_range > 0 else 1.0
+        # Price compression ratio with division by zero protection
+        if historical_range == 0:
+            compression_ratio = 1.0
+        else:
+            compression_ratio = recent_range / historical_range
         
-        # Volatility compression
+        # Volatility compression with division by zero protection
         recent_volatility = np.std(closes[-10:])
         historical_volatility = np.std(closes[-20:])
-        vol_compression = recent_volatility / historical_volatility if historical_volatility > 0 else 1.0
+        
+        if historical_volatility == 0:
+            vol_compression = 1.0
+        else:
+            vol_compression = recent_volatility / historical_volatility
         
         in_consolidation = compression_ratio < 0.6 and vol_compression < 0.8
         
@@ -302,7 +357,13 @@ class MarketStructureAnalyzer:
             structure_scores[structure] = structure_scores.get(structure, 0) + weight
         
         primary = max(structure_scores, key=structure_scores.get)
-        confidence = structure_scores[primary] / sum(structure_scores.values())
+        
+        # Calculate confidence with division by zero protection
+        total_weight = sum(structure_scores.values())
+        if total_weight == 0:
+            confidence = 0.0
+        else:
+            confidence = structure_scores[primary] / total_weight
         
         return {
             'structure': primary,
