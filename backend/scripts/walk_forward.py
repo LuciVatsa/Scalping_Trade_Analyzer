@@ -27,11 +27,14 @@ def setup_deap_toolbox():
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
+    # --- Define the "Genes" to be optimized for YOUR engine ---
     toolbox.register("attr_momentum_weight", random.uniform, 1.5, 2.5)
     toolbox.register("attr_volume_weight", random.uniform, 1.5, 2.5)
     toolbox.register("attr_candle_weight", random.uniform, 1.0, 2.0)
-    toolbox.register("attr_bull_thresh", random.uniform, 1.5, 3.5)
-    toolbox.register("attr_strong_bull_thresh", random.uniform, 4.0, 7.0)
+    
+    # --- THIS IS THE CHANGE: Allow the GA to test lower, more sensitive thresholds ---
+    toolbox.register("attr_bull_thresh", random.uniform, 0.8, 2.5)
+    toolbox.register("attr_strong_bull_thresh", random.uniform, 3.0, 5.0)
 
     attributes = (
         toolbox.attr_momentum_weight,
@@ -70,7 +73,7 @@ def optimize_parameters(prepared_training_data: pd.DataFrame) -> Dict[str, float
     toolbox.register("evaluate", evaluate_fitness, prepared_training_data=prepared_training_data)
 
     pop = toolbox.population(n=20)
-    hof = tools.HallOfFame(1) # Corrected typo from HallOf Fame
+    hof = tools.HallOfFame(1)
     
     algorithms.eaSimple(pop, toolbox, cxpb=0.6, mutpb=0.3, ngen=15, halloffame=hof, verbose=False)
     
@@ -137,11 +140,6 @@ if __name__ == "__main__":
         print(f"\n--- Processing Period: {period_start} to {period_end} ---")
 
         print(f"Preparing {len(train_data)} bars of training data...")
-        
-        # --- ADDED DEBUGGING ---
-        # This will print the column names right before the error occurs
-        print("Columns in train_data:", train_data.columns.tolist())
-        
         data_processor = DataProcessor(config=BacktestConfig()) 
         prepared_train_data = data_processor.prepare_data(train_data)
         if prepared_train_data.empty:
